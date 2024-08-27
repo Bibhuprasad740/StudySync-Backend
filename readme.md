@@ -24,7 +24,7 @@ LAYER_DURATIONS = [0, 7, 20, 50, 100] // or you may add your own duration layers
 - Inside index.js file there is this commented code. 
 ```js
 // add a new topic to the database
-// console.log(studyController.addStudyData({
+// console.log(revisionController.addStudyData({
 //     'topic': 'Random topic for test',
 //     'subject': 'OS',
 //     'additionalInfo': 'Video no. 1.1, page no. 1-6'
@@ -42,7 +42,7 @@ LAYER_DURATIONS = [0, 7, 20, 50, 100] // or you may add your own duration layers
 - Inside index.js file there is this commented code. 
 ```js
 // update revision count for a topic
-// console.log(studyController.updateRevisionCount(1));
+// console.log(revisionController.updateRevisionCount(1));
 ```
 - Uncomment this, add the id of the topic you want to revise(see the id in the output console) save it and coment it again.
 - You should get an output like this - 
@@ -56,7 +56,7 @@ LAYER_DURATIONS = [0, 7, 20, 50, 100] // or you may add your own duration layers
 - This part of the code in index.js file is responsible for getting revision data  
 ```js
 // get revision topics
-print(studyController.calculateRevision())
+print(revisionController.calculateRevision())
 ```
 
 # Errors and troubleshoot
