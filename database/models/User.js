@@ -16,6 +16,10 @@ const userSchema = mongoose.Schema({
         required: true,
         minlength: 8,
     },
+    revisionIntervals: {
+        type: [Number],
+        default: [0, 7, 20, 50, 100],
+    },
     studies: [
         {
             topic: {

@@ -30,7 +30,6 @@ const authMiddleware = async (req, res, next) => {
                 }
             }
 
-            console.log('about to verify token for normal user..')
             // Verify as a normal user token if not an admin token
             user = jwt.verify(token, process.env.JWT_SECRET);
         }
