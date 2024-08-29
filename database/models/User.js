@@ -28,32 +28,38 @@ const userSchema = mongoose.Schema({
             },
             date: {
                 type: Date,
+                default: Date.now,
                 required: true
             },
             lastRevisedOn: {
                 type: Date,
-                required: true
+                default: null
             },
             revisionCount: {
                 type: Number,
                 default: 0,
                 min: 0
             },
-            additionalInfo: String
+            additionalInfo: String,
         },
     ],
-    tokens: [
-        {
-            token: {
-                type: String,
-                required: true
-            },
-            expiresIn: {
-                type: Date,
-                required: true
-            }
+    token: {
+        value: {
+            type: String,
+            nullable: true,
+            default: null,
+        },
+        expiresIn: {
+            type: Date,
+            nullable: true,
+            default: null,
+        },
+        attempts: {
+            type: Number,
+            default: 0,
+            min: 0
         }
-    ],
+    },
     role: {
         type: String,
         enum: ['user', 'admin'],
@@ -71,6 +77,10 @@ const userSchema = mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    lockUntil: {
+        type: Date,
+        default: null,
+    },
     studyPoints: {
         type: Number,
         default: 0,
@@ -80,17 +90,49 @@ const userSchema = mongoose.Schema({
         type: Date,
         default: Date.now,
     },
-    lastUpdated: {
-        type: Date,
-        default: Date.now,
-    },
     lastPasswordReset: Date,
-    profilePic: String,
+    profilePic: {
+        type: String,
+        default: ''
+    },
+    dailyStudyCount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
+    dailyReviseCount: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     resetToken: String,
     resetTokenExpiration: Date,
     verifyToken: String,
     verifyTokenExpiration: Date,
-    lockUntil: Date,
+    purchaseData: {
+        currentPlan: {
+            type: String,
+            required: true,
+            enum: ['active', 'inactive',],
+            default: 'inactive',
+        },
+        purchaseHistory: [
+            {
+                purchaseToken: {
+                    value: {
+                        type: String,
+                        default: null,
+                    },
+                    expiresIn: {
+                        type: Date,
+                        default: null,
+                    },
+                },
+                default: [],
+            },
+        ],
+        default: {}
+    }
 },
     { timestamps: true }
 );

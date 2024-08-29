@@ -1,15 +1,19 @@
-const fs = require('fs');
+const jwt = require('jsonwebtoken');
+
+// User model
+const User = require('../database/models/User');
 
 const dateUtils = require('../utils/dateUtils');
 
-const data = fs.readFileSync('./data/data.json', 'utf8');
-const parsedData = JSON.parse(data);
-
-const studyData = parsedData.studyData;
-
-exports.getAllStudyData = (req, res) => {
+// Get all study data for a user
+exports.getAllStudyData = async (req, res) => {
     try {
-        res.status(200).json(studyData);
+        const { email } = req.user;
+        const user = await User.findOne({ email });
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        res.status(200).json(user.studies);
     } catch (error) {
         console.error('Error in getAllStudyData()', error);
         res.status(500).json({ message: error.message });
@@ -17,30 +21,72 @@ exports.getAllStudyData = (req, res) => {
 }
 
 // Add new study data
-exports.addStudyData = (req, res) => {
+exports.addStudyData = async (req, res) => {
     try {
-        const studyObject = req.body;
-        const id = parseInt(parsedData.count) + 1;
+        // Await the user fetch operation
+        const user = await User.findOne({ email: req.user.email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-        const today = new Date();
-        const date = dateUtils.formatDate(today);
+        const { topic, subject, additionalInfo, date } = req.body;
 
-        const newStudyData = {
-            ...studyObject,
-            id,
-            date,
-            revisionCount: 0,
-            lastRevisedOn: 0
+        if (!topic || !subject) {
+            return res.status(400).json({ message: 'Topic and subject are required' });
         }
 
-        // Add newStudyData key value pair to studyData object
-        studyData[id] = newStudyData;
+        // Check if user has exceeded the daily limit
+        // TODO: Add security check for admin => admin token
+        if (user.role !== 'admin' && user.purchaseData.currentPlan === 'inactive') {
+            if (user.dailyStudyCount >= process.env.FREE_DAILY_STUDY_COUNT) {
+                return res.status(403).json({ message: 'Daily study limit reached for free plan' });
+            }
+        } else if (user.role !== 'admin' && user.purchaseData.currentPlan === 'active') {
+            const purchaseHistory = user.purchaseData.purchaseHistory;
+            if (!purchaseHistory || purchaseHistory.length === 0) {
+                return res.status(400).json({ message: 'Purchase history not found! Please contact support!' });
+            }
 
-        parsedData.count = id;
-        parsedData.studyData = studyData;
+            const lastPurchase = purchaseHistory[purchaseHistory.length - 1];
+            try {
+                const data = jwt.verify(lastPurchase, process.env.PURCHASE_SECRET);
+                const dailyStudyLimit = data.dailyStudyLimit;
+                if (user.dailyStudyCount >= dailyStudyLimit) {
+                    return res.status(403).json({ message: 'Daily study limit reached for this plan!' });
+                }
+            } catch (error) {
+                // lock the account for next 3 months
+                user.isLocked = true;
+                user.lockUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+                await user.save();  // Ensure user is saved after modification
+                return res.status(403).json({ message: 'Account locked due to invalid subscription!' });
+            }
+        }
+        const newStudyData = {
+            topic,
+            subject,
+            additionalInfo,
+            revisionCount: 0,
+        };
 
-        // Write the updated array back to the file
-        fs.writeFileSync('./data/data.json', JSON.stringify(parsedData, null, 2));
+        // Studied on a particular date
+        if (date) {
+            if (!dateUtils.isValidDate(date)) {
+                return res.status(400).json({ message: 'Invalid date format' });
+            }
+
+            // check if the study date is in future
+            if (new Date(date) > new Date()) {
+                return res.status(400).json({ message: 'Study date cannot be in future!' });
+            }
+
+            newStudyData.date = new Date(date);
+        }
+
+        // Push newStudyData into studies array in user object
+        user.studies.push(newStudyData);
+
+        // Update daily study count
+        user.dailyStudyCount++;
+        await user.save();
 
         res.status(201).json({
             message: 'Study data added successfully'
@@ -49,4 +95,4 @@ exports.addStudyData = (req, res) => {
         console.error('Error adding study data:', error);
         res.status(500).send({ message: 'Failed to add study data' });
     }
-}
+};

@@ -7,7 +7,14 @@ exports.dateDifference = (incomingDate, referencedDate = new Date()) => {
     return differenceInDays;
 }
 
+// format the date into a string
 exports.formatDate = (date) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return date.toLocaleDateString('en-US', options);
+}
+
+// check for valid date string
+exports.isValidDate = (dateString) => {
+    const parsedDate = new Date(dateString);
+    return !isNaN(parsedDate.getTime());
 }

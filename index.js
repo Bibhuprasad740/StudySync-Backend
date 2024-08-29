@@ -8,23 +8,30 @@ const dotenv = require('dotenv');
 const connectToDatabase = require('./database/db');
 
 // routes import
+const authRoutes = require('./routes/authRoutes');
 const revisionRoutes = require('./routes/revisionRoutes');
 const studyRoutes = require('./routes/studyRoutes');
 
 // middleware import
 const authMiddleware = require('./middlewares/authMiddleware');
+const accountLockMiddleware = require('./middlewares/accountLockMiddleware');
 
 dotenv.config();
 
 const app = express();
 
 app.use(cors());
-app.use(express.json()); 
-
-// mandatory auth for all apis
-app.use(authMiddleware);
+app.use(express.json());
 
 // use all the routes defined
+app.use('/auth', authRoutes);
+
+// auth middleware
+app.use(authMiddleware);
+
+// account lock middleware
+app.use(accountLockMiddleware);
+
 app.use('/revision', revisionRoutes);
 app.use('/study', studyRoutes);
 
