@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { calculateRevision, addStudyData, updateRevisionCount } = require('../controllers/revisionController');
+const { calculateRevision, updateRevisionCount } = require('../controllers/revisionController');
 
 /**
  * @authed

@@ -1,25 +1,26 @@
-const fs = require('fs');
+// User model
+const User = require('../database/models/User');
 
-const dateUtils = require('../utils/dateUtils');
 const { customComparator } = require('../utils/utils');
-
-const data = fs.readFileSync('./data/data.json', 'utf8');
-const parsedData = JSON.parse(data);
-
-const studyData = parsedData.studyData;
+const dateUtils = require('../utils/dateUtils');
 
 // Calculates all the revisions
-exports.calculateRevision = (req, res) => {
+exports.calculateRevision = async (req, res) => {
     try {
-        const { LAYER_DURATIONS } = process.env;
+        const { email } = req.user;
 
-        const layerDurations = JSON.parse(LAYER_DURATIONS);
+        // find user in database
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const userRevisionIntervals = user.revisionIntervals;
+
+        const userStudyData = user.studies;
 
         const revisionData = {};
 
         // brute force approach
-        for (const id in studyData) {
-            const singleStudyData = studyData[id];
+        for (const singleStudyData of userStudyData) {
 
             const lastRevisedOn = singleStudyData.lastRevisedOn;
 
@@ -30,8 +31,8 @@ exports.calculateRevision = (req, res) => {
                 difference = dateUtils.dateDifference(lastRevisedOn);
             }
             // Determine which revision layer the study item belongs to
-            for (let i = 0; i < layerDurations.length; i++) {
-                const layerDuration = layerDurations[i];
+            for (let i = 0; i < userRevisionIntervals.length; i++) {
+                const layerDuration = userRevisionIntervals[i];
 
                 // If this topic doesn't match current revision layer
                 if (singleStudyData.revisionCount > i) continue;
@@ -80,19 +81,28 @@ exports.calculateRevision = (req, res) => {
 }
 
 // Update revision count for a study data
-exports.updateRevisionCount = (req, res) => {
+exports.updateRevisionCount = async (req, res) => {
     try {
-        const studyId = parseInt(req.params.id);
-        const revisionDate = new Date();
-        const today = dateUtils.formatDate(revisionDate);
+        const { email } = req.user;
 
-        studyData[studyId].revisionCount += 1;
-        studyData[studyId].lastRevisedOn = today;
+        // find user in database
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-        parsedData.studyData = studyData;
+        const studyId = req.params.id;
 
-        // Write the updated array back to the file
-        fs.writeFileSync('./data/data.json', JSON.stringify(parsedData, null, 2));
+        const today = new Date();
+
+        // update the revision count of the study item whose id is studyId
+        const studyItemIndex = user.studies.findIndex(item => item.id === studyId);
+        if (studyItemIndex === -1) {
+            return res.status(404).json({ message: 'Study item not found' });
+        }
+
+        user.studies[studyItemIndex].revisionCount += 1;
+        user.studies[studyItemIndex].lastRevisedOn = today;
+
+        await user.save();
 
         res.status(200).json({
             message: 'Study data updated successfully'
