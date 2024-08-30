@@ -23,19 +23,19 @@ exports.signin = async (req, res) => {
         if (user.isLocked) {
             const lockUntil = new Date(user.lockUntil);
             const today = new Date();
-            
+
             // if lockUntil date is in future, return immediately
             if (today <= lockUntil) {
                 const unlockDate = dateUtils.formatDate(lockUntil);
                 return APIErrorHandler(res, Errors.ACCOUNT_LOCKED_ERROR, `Your account is locked until ${unlockDate}`);
             }
-            
+
             // unlock the account
             user.isLocked = false;
             user.lockUntil = null;
             await user.save();
         }
-        
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return APIErrorHandler(res, Errors.INCORRECT_PASSWORD_ERROR);

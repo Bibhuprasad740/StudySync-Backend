@@ -7,7 +7,7 @@ const { ping } = require('../controllers/userController')
 /**
  * @authed
  * Ping route to keep track of daily login of users
- * /data/all
+ * /user/ping
  */
 router.post('/ping', ping);
 

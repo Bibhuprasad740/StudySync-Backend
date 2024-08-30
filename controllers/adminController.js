@@ -17,6 +17,10 @@ exports.makeAdmin = async (req, res) => {
             return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
         }
 
+        if (user.role === 'admin') {
+            return APIErrorHandler(res, Errors.INVALID_REQUEST_ERROR, 'This user is already an admin');
+        }
+
         const userId = user._id;
 
         const token = jwt.sign({ id: userId, email, isAdmin: true }, process.env.ADMIN_JWT_SECRET, { expiresIn: '7d' });

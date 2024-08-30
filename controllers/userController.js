@@ -1,6 +1,8 @@
 const User = require("../database/models/User");
 const APIErrorHandler = require("../errors/ApiErrorHandler");
 const Errors = require("../errors/Errors");
+const APISuccessHandler = require("../success/ApiSuccessHandler");
+const Successes = require("../success/Successes");
 
 const dateUtils = require('../utils/dateUtils');
 
@@ -20,7 +22,9 @@ exports.ping = async (req, res, next) => {
             user.studyPoints += 1;
             await user.save();
         }
-        res.status(200).json({ message: "Ping successful" });
+        APISuccessHandler(res, Successes.GENERAL_SUCCESS, {
+            message: "Ping successful"
+        })
     } catch (error) {
         console.error("Error in ping()", error);
         APIErrorHandler(res, Errors.SERVER_ERROR, error.message);
