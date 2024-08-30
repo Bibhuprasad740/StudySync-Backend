@@ -5,6 +5,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../database/models/User');
 
 const dateUtils = require('../utils/dateUtils');
+const APIErrorHandler = require('../errors/ApiErrorHandler');
+const Errors = require('../errors/Errors');
+const APISuccessHandler = require('../success/ApiSuccessHandler');
+const Successes = require('../success/Successes');
 
 // controller method for signin
 exports.signin = async (req, res) => {
@@ -12,7 +16,7 @@ exports.signin = async (req, res) => {
     try {
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ message: 'User not found' });
+            return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
         }
 
         // Blocked user due to invalid purchase token forgery
@@ -23,7 +27,7 @@ exports.signin = async (req, res) => {
             // if lockUntil date is in future, return immediately
             if (today <= lockUntil) {
                 const unlockDate = dateUtils.formatDate(lockUntil);
-                return res.status(403).json({ message: `Account is locked till ${unlockDate}!` });
+                return APIErrorHandler(res, Errors.ACCOUNT_LOCKED_ERROR, `Your account is locked until ${unlockDate}`);
             }
 
             // unlock the account
@@ -34,33 +38,34 @@ exports.signin = async (req, res) => {
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return APIErrorHandler(res, Errors.INCORRECT_PASSWORD_ERROR);
         }
 
+        // TODO: Create method in date utils for expiration date calculation
         let token;
         if (user.role === 'admin') {
             token = jwt.sign({ id: user._id, email: email, isAdmin: true }, process.env.ADMIN_JWT_SECRET, { expiresIn: '7d' });
         } else {
-            token = jwt.sign({ id: user._id, email: email }, process.env.JWT_SECRET, { expiresIn: '2h' });
+            token = jwt.sign({ id: user._id, email: email }, process.env.JWT_SECRET, { expiresIn: '7d' });
         }
 
         user.token = {
             value: token,
-            expiresIn: new Date(Date.now() + 2 * 60 * 60 * 1000),
+            expiresIn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         };
 
         user.lastLogin = new Date(Date.now());
 
         await user.save();
-
-        res.json({
+        return APISuccessHandler(res, Successes.GENERAL_SUCCESS, {
             _id: user._id,
             email: user.email,
             token: token,
+            expiresIn: user.token.expiresIn,
         });
     } catch (err) {
         console.error('Error signing in:', err);
-        return res.status(500).json({ message: err.message });
+        return APIErrorHandler(res, Errors.SIGN_IN_ERROR, err.message);
     }
 };
 
@@ -70,54 +75,66 @@ exports.signup = async (req, res) => {
     try {
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.status(400).json({ message: 'Email already exists' });
+            return APIErrorHandler(res, Errors.SIGN_UP_ERROR, 'Email already exists');
         }
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const jwtToken = jwt.sign({ email: email }, process.env.JWT_SECRET, { expiresIn: '2h' });
-
-        // token and expires in 2 hours
-        const token = {
-            value: jwtToken,
-            expiresIn: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        }
-
-        const user = new User({ name, email, password: hashedPassword, token });
+        const user = new User({ name, email, password: hashedPassword });
         await user.save();
 
-        res.json({
+        const jwtToken = jwt.sign({ id: user._id, email: email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+        // token and expires in 7 days
+        const token = {
+            value: jwtToken,
+            expiresIn: new Date(Date.now() + 7 * 60 * 60 * 1000),
+        }
+
+        user.token = token;
+        await user.save();
+
+        APISuccessHandler(res, Successes.GENERAL_SUCCESS, {
             _id: user._id,
             email: user.email,
-            token: token,
+            token: token.value,
+            expiresIn: token.expiresIn,
         });
     } catch (err) {
         console.error('Error checking for existing user:', err);
-        return res.status(500).json({ message: err.message });
+        return APIErrorHandler(res, Errors.SERVER_ERROR, err.message);
     }
 }
 
 // controller method for logout
 exports.logout = async (req, res) => {
-    const { userId } = req.body;
+
+    let userId;
+    if (req.tokenExpired) {
+        userId = req.body.userId;
+        if (!userId) {
+            return APIErrorHandler(res, Errors.TOKEN_EXPIRED_ERROR, 'UserId is required!s');
+        }
+    } else {
+        userId = req.user.id;
+    }
     try {
         const user = await User.findByIdAndUpdate(userId, {
             $set: {
                 token: {
                     value: null,
                     expiresIn: null,
+                    attempts: 0,
                 }
             }
         });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
         }
 
-        res.json({ message: 'Logged out successfully' });
+        APISuccessHandler(res, Successes.LOG_OUT_SUCCESS);
     } catch (err) {
         console.error('Error logging out:', err);
-        return res.status(500).json({ message: err.message });
+        return APIErrorHandler(res, Errors.SERVER_ERROR, err.message);
     }
 }
-
-// TODO: make a user admin

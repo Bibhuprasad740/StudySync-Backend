@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 
 // import User model
 const User = require('../database/models/User');
+const AccountLockErrorHandler = require('../errors/AccountLockErrorHandler');
+const Errors = require('../errors/Errors');
 
 const authMiddleware = async (req, res, next) => {
     if (!req.headers.authorization || !req.headers.authorization.toLowerCase().startsWith('bearer ')) {
@@ -25,7 +27,8 @@ const authMiddleware = async (req, res, next) => {
 
             // Token expired but on logout route, allow it to proceed
             if (adminErr.name === 'TokenExpiredError') {
-                if(req.path === '/logout'){
+                if (req.path === '/logout') {
+                    req.tokenExpired = true;
                     return next();
                 }
             }
@@ -42,32 +45,30 @@ const authMiddleware = async (req, res, next) => {
 
         // Check if token matches the token in the user's token store
         if (dbUser.token.value !== token) {
-            dbUser.token.attempts++;
-            if (dbUser.token.attempts > 5) {
-                // TODO: save this data for future analysis
-                dbUser.isLocked = true;
-                dbUser.lockUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-                await dbUser.save();
-                return res.status(403).json({ message: 'Account locked due to multiple failed attempts.' });
+            // if the user is not logged in 
+            if(dbUser.token.value === null) {
+                return res.status(403).json({ message: 'You are not logged in!' });
             }
-            await dbUser.save();
-            return res.status(403).json({ message: 'Invalid token' });
-        }
 
-        dbUser.token.attempts = 0;
-        await dbUser.save();
+            dbUser.token.attempts++;
+            await dbUser.save();
+
+            // if enough attempts have passed, lock the user for 3 days
+            return AccountLockErrorHandler(res, dbUser, 3, Errors.MIS_MATCH_TOKEN_ERROR);
+        }
 
         req.user = user;
         req.user.isAdmin = isAdmin;
-        
+
         next();
     } catch (err) {
-        if(err.name === 'JsonWebTokenError') {
+        if (err.name === 'JsonWebTokenError') {
             return res.status(403).json({ message: 'Invalid token' });
         }
 
         if (err.name === 'TokenExpiredError') {
             if (req.path === '/logout') {
+                req.tokenExpired = true;
                 return next();
             } else {
                 return res.status(403).json({ message: 'Token expired' });
