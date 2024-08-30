@@ -4,6 +4,10 @@ const jwt = require('jsonwebtoken');
 const User = require('../database/models/User');
 
 const dateUtils = require('../utils/dateUtils');
+const AccountLockHandler = require('../errors/AccountLockErrorHandler');
+const Errors = require('../errors/Errors');
+const APIErrorHandler = require('../errors/ApiErrorHandler');
+const PurchaseErrorHandler = require('../errors/PurchaseErrorHandler');
 
 // Get all study data for a user
 exports.getAllStudyData = async (req, res) => {
@@ -11,12 +15,14 @@ exports.getAllStudyData = async (req, res) => {
         const { email } = req.user;
         const user = await User.findOne({ email });
 
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user) {
+            return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
+        }
 
         res.status(200).json(user.studies);
     } catch (error) {
         console.error('Error in getAllStudyData()', error);
-        res.status(500).json({ message: error.message });
+        return APIErrorHandler(res, Errors.SERVER_ERROR, error.message);
     }
 }
 
@@ -25,24 +31,27 @@ exports.addStudyData = async (req, res) => {
     try {
         // Await the user fetch operation
         const user = await User.findOne({ email: req.user.email });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (!user) {
+            return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
+        }
 
         const { topic, subject, additionalInfo, date } = req.body;
 
         if (!topic || !subject) {
-            return res.status(400).json({ message: 'Topic and subject are required' });
+            return APIErrorHandler(res, Errors.INVALID_REQUEST_ERROR, 'Topic and subject are required');
         }
 
         // Check if user has exceeded the daily limit
         // TODO: Add security check for admin => admin token
         if (user.role !== 'admin' && user.purchaseData.currentPlan === 'inactive') {
             if (user.dailyStudyCount >= process.env.FREE_DAILY_STUDY_COUNT) {
-                return res.status(403).json({ message: 'Daily study limit reached for free plan' });
+                return APIErrorHandler(res, Errors.LIMIT_REACHED_ERROR);
             }
         } else if (user.role !== 'admin' && user.purchaseData.currentPlan === 'active') {
             const purchaseHistory = user.purchaseData.purchaseHistory;
             if (!purchaseHistory || purchaseHistory.length === 0) {
-                return res.status(400).json({ message: 'Purchase history not found! Please contact support!' });
+                return PurchaseErrorHandler(res, Errors.PURCHASE_HISTORY_NOT_FOUND_ERROR, 'Please contact support!')
             }
 
             const lastPurchase = purchaseHistory[purchaseHistory.length - 1];
@@ -50,14 +59,11 @@ exports.addStudyData = async (req, res) => {
                 const data = jwt.verify(lastPurchase, process.env.PURCHASE_SECRET);
                 const dailyStudyLimit = data.dailyStudyLimit;
                 if (user.dailyStudyCount >= dailyStudyLimit) {
-                    return res.status(403).json({ message: 'Daily study limit reached for this plan!' });
+                    return APIErrorHandler(res, Errors.LIMIT_REACHED_ERROR);
                 }
             } catch (error) {
-                // lock the account for next 3 months
-                user.isLocked = true;
-                user.lockUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-                await user.save();  // Ensure user is saved after modification
-                return res.status(403).json({ message: 'Account locked due to invalid subscription!' });
+                // lock the account for next 3 months for purchase forgery
+                return AccountLockHandler(res, user, 90, Errors.PURCHASE_FORGERY_ERROR);
             }
         }
         const newStudyData = {
@@ -70,12 +76,12 @@ exports.addStudyData = async (req, res) => {
         // Studied on a particular date
         if (date) {
             if (!dateUtils.isValidDate(date)) {
-                return res.status(400).json({ message: 'Invalid date format' });
+                return APIErrorHandler(res, Errors.INVALID_REQUEST_ERROR, 'Invalid date format');
             }
 
             // check if the study date is in future
             if (new Date(date) > new Date()) {
-                return res.status(400).json({ message: 'Study date cannot be in future!' });
+                return APIErrorHandler(res, Errors.INVALID_REQUEST_ERROR, 'Study date cannot be in future!');
             }
 
             newStudyData.date = new Date(date);
@@ -93,6 +99,6 @@ exports.addStudyData = async (req, res) => {
         });
     } catch (error) {
         console.error('Error adding study data:', error);
-        res.status(500).send({ message: 'Failed to add study data' });
+        return APIErrorHandler(res, Errors.SERVER_ERROR, error.message);
     }
 };

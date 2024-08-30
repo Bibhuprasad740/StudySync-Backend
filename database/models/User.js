@@ -87,8 +87,22 @@ const userSchema = mongoose.Schema({
     },
     studyPoints: {
         type: Number,
-        default: 0,
+        default: 1,
         min: 0,
+    },
+    consistencyTracker: {
+        dailyLogin: {
+            type: Boolean,
+            default: false,
+        },
+        timelyRevision: {
+            type: Boolean,
+            default: false,
+        },
+        dailyStudy: {
+            type: Boolean,
+            default: false,
+        }
     },
     lastLogin: {
         type: Date,

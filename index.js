@@ -11,6 +11,8 @@ const connectToDatabase = require('./database/db');
 const authRoutes = require('./routes/authRoutes');
 const revisionRoutes = require('./routes/revisionRoutes');
 const studyRoutes = require('./routes/studyRoutes');
+const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // middleware import
 const authMiddleware = require('./middlewares/authMiddleware');
@@ -34,6 +36,8 @@ app.use(accountLockMiddleware);
 
 app.use('/revision', revisionRoutes);
 app.use('/study', studyRoutes);
+app.use('/user', userRoutes);
+app.use('/admin', adminRoutes);
 
 // Empty route
 app.get('/', function (req, res) {

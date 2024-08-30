@@ -3,6 +3,8 @@ const User = require('../database/models/User');
 
 const { customComparator } = require('../utils/utils');
 const dateUtils = require('../utils/dateUtils');
+const APIErrorHandler = require('../errors/ApiErrorHandler');
+const Errors = require('../errors/Errors');
 
 // Calculates all the revisions
 exports.calculateRevision = async (req, res) => {
@@ -11,7 +13,9 @@ exports.calculateRevision = async (req, res) => {
 
         // find user in database
         const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!user) {
+            return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
+        }
 
         const userRevisionIntervals = user.revisionIntervals;
 
@@ -76,7 +80,7 @@ exports.calculateRevision = async (req, res) => {
 
     } catch (error) {
         console.error('Error calculating revision:', error);
-        res.status(500).send({ message: 'Error reading the file' });
+        return APIErrorHandler(res, Errors.SERVER_ERROR, error.message);
     }
 }
 
@@ -96,7 +100,7 @@ exports.updateRevisionCount = async (req, res) => {
         // update the revision count of the study item whose id is studyId
         const studyItemIndex = user.studies.findIndex(item => item.id === studyId);
         if (studyItemIndex === -1) {
-            return res.status(404).json({ message: 'Study item not found' });
+            return APIErrorHandler(res, Errors.INVALID_REQUEST_ERROR, 'Study item not found');
         }
 
         user.studies[studyItemIndex].revisionCount += 1;
@@ -109,6 +113,6 @@ exports.updateRevisionCount = async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating study data:', error);
-        res.status(500).send({ message: 'Failed to update study data' });
+        return APIErrorHandler(res, Errors.SERVER_ERROR, error.message);
     }
 }
