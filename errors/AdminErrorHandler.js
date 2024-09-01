@@ -1,7 +1,8 @@
 const Errors = require('./Errors');
 
-const AdminErrorHandler = async (res, error ) => {
+const AdminErrorHandler = async (res, error) => {
     const { message, status } = error;
+    console.log(message, status);
 
     switch (error) {
         case Errors.INVALID_ADMIN: {

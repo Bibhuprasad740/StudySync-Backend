@@ -2,6 +2,7 @@ const Errors = require("./Errors");
 
 const AccountLockErrorHandler = async (res, user, days, error) => {
     const { message, status } = error;
+    console.log(message, status);
 
     // TODO: save this data for future analysis
     switch (error) {

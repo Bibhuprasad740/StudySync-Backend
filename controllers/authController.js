@@ -62,7 +62,7 @@ exports.signin = async (req, res) => {
             email: user.email,
             token: token,
             expiresIn: user.token.expiresIn,
-        });
+        }, "Login Successful!");
     } catch (err) {
         console.error('Error signing in:', err);
         return APIErrorHandler(res, Errors.SIGN_IN_ERROR, err.message);
@@ -98,7 +98,7 @@ exports.signup = async (req, res) => {
             email: user.email,
             token: token.value,
             expiresIn: token.expiresIn,
-        });
+        }, "Signup Successful!");
     } catch (err) {
         console.error('Error checking for existing user:', err);
         return APIErrorHandler(res, Errors.SERVER_ERROR, err.message);

@@ -1,5 +1,6 @@
 const APIErrorHandler = (res, error, errorMessage = null) => {
     const { message, status } = error;
+    console.log(message, status);
 
     switch (error) {
         // to be added

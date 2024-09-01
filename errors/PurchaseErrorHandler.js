@@ -2,6 +2,7 @@ const Errors = require("./Errors");
 
 const PurchaseErrorHandler = (res, error, user, errorMessage) => {
     const { message, status } = error;
+    console.log(message, status);
 
     switch (error) {
         case Errors.PURCHASE_HISTORY_NOT_FOUND_ERROR: {
