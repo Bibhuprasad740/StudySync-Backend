@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // controller imports
-const { signup, signin, logout } = require('../controllers/authController');
+const { signup, signin, logout, signinWithGoogle } = require('../controllers/authController');
 
 // auth middleware
 const authMiddleware = require('../middlewares/authMiddleware');
@@ -13,6 +13,13 @@ const authMiddleware = require('../middlewares/authMiddleware');
  * /auth/signin
  */
 router.post('/signin', signin);
+
+/**
+ * @notauthed
+ * Used to sign in a user using Google OAuth2
+ * /auth/google-signin
+ */
+router.post('/google-signin', signinWithGoogle);
 
 /**
  * @notauthed

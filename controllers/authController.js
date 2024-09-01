@@ -1,6 +1,7 @@
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
 const User = require('../database/models/User');
 
@@ -9,6 +10,9 @@ const APIErrorHandler = require('../errors/ApiErrorHandler');
 const Errors = require('../errors/Errors');
 const APISuccessHandler = require('../success/ApiSuccessHandler');
 const Successes = require('../success/Successes');
+
+// TODO: Remove
+const print = require('../utils/print');
 
 // controller method for signin
 exports.signin = async (req, res) => {
@@ -68,6 +72,54 @@ exports.signin = async (req, res) => {
         return APIErrorHandler(res, Errors.SIGN_IN_ERROR, err.message);
     }
 };
+
+// controller method for sign in with gogole
+exports.signinWithGoogle = async (req, res) => {
+    try {
+        const { accessToken } = req.body;
+        if (!accessToken) {
+            return APIErrorHandler(res, Errors.SIGN_IN_ERROR, 'Access token is required');
+        }
+
+        const response = await axios.get(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${accessToken}`);
+
+        const email = response?.data?.email;
+
+        if (!email) {
+            return APIErrorHandler(res, Errors.SIGN_IN_ERROR, 'Invalid access token');
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
+        }
+
+        let token;
+        if (user.role === 'admin') {
+            token = jwt.sign({ id: user._id, email: email, isAdmin: true }, process.env.ADMIN_JWT_SECRET, { expiresIn: '7d' });
+        } else {
+            token = jwt.sign({ id: user._id, email: email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+        }
+
+        user.token = {
+            value: token,
+            expiresIn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        };
+
+        user.lastLogin = new Date(Date.now());
+
+        await user.save();
+        return APISuccessHandler(res, Successes.GENERAL_SUCCESS, {
+            _id: user._id,
+            email: user.email,
+            token: token,
+            expiresIn: user.token.expiresIn,
+        }, "Login Successful!");
+    } catch (error) {
+        console.log('Error signing in:', error);
+        return APIErrorHandler(res, Errors.SIGN_IN_ERROR, error.response?.data?.error);
+    }
+}
 
 // controller method for signup
 exports.signup = async (req, res) => {
