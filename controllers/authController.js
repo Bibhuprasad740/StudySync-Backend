@@ -11,9 +11,6 @@ const Errors = require('../errors/Errors');
 const APISuccessHandler = require('../success/ApiSuccessHandler');
 const Successes = require('../success/Successes');
 
-// TODO: Remove
-const print = require('../utils/print');
-
 // controller method for signin
 exports.signin = async (req, res) => {
     const { email, password } = req.body;
