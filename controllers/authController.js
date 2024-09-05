@@ -55,8 +55,6 @@ exports.signin = async (req, res) => {
             expiresIn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         };
 
-        user.lastLogin = new Date(Date.now());
-
         await user.save();
         return APISuccessHandler(res, Successes.GENERAL_SUCCESS, {
             _id: user._id,
