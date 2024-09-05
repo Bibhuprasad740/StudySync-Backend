@@ -11,6 +11,10 @@ const Successes = {
         message: 'User logged out successfully',
         status: 200,
     },
+    TOPIC_REVISED: {
+        message: 'Study data updated successfully',
+        status: 200,
+    },
     GENERAL_SUCCESS: {
         message: 'Operation completed successfully',
         status: 200,

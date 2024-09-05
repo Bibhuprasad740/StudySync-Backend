@@ -8,6 +8,8 @@ const AccountLockHandler = require('../errors/AccountLockErrorHandler');
 const Errors = require('../errors/Errors');
 const APIErrorHandler = require('../errors/ApiErrorHandler');
 const PurchaseErrorHandler = require('../errors/PurchaseErrorHandler');
+const APISuccessHandler = require('../success/ApiSuccessHandler');
+const Successes = require('../success/Successes');
 
 // Get all study data for a user
 exports.getAllStudyData = async (req, res) => {
@@ -19,7 +21,7 @@ exports.getAllStudyData = async (req, res) => {
             return APIErrorHandler(res, Errors.USER_NOT_FOUND_ERROR);
         }
 
-        res.status(200).json(user.studies);
+        APISuccessHandler(res, Successes.GENERAL_SUCCESS, user.studies);
     } catch (error) {
         console.error('Error in getAllStudyData()', error);
         return APIErrorHandler(res, Errors.SERVER_ERROR, error.message);

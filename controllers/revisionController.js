@@ -4,7 +4,9 @@ const User = require('../database/models/User');
 const { customComparator } = require('../utils/utils');
 const dateUtils = require('../utils/dateUtils');
 const APIErrorHandler = require('../errors/ApiErrorHandler');
+const APISuccessHandler = require('../success/ApiSuccessHandler');
 const Errors = require('../errors/Errors');
+const Successes = require('../success/Successes');
 
 // Calculates all the revisions
 exports.calculateRevision = async (req, res) => {
@@ -108,9 +110,7 @@ exports.updateRevisionCount = async (req, res) => {
 
         await user.save();
 
-        res.status(200).json({
-            message: 'Study data updated successfully'
-        });
+        return APISuccessHandler(res, Successes.TOPIC_REVISED);
     } catch (error) {
         console.error('Error updating study data:', error);
         return APIErrorHandler(res, Errors.SERVER_ERROR, error.message);

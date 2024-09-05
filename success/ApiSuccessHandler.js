@@ -14,6 +14,10 @@ const APISuccessHandler = (res, success, data = null, successMessage = null) => 
             return res.status(200).json(data);
         }
 
+        case Successes.TOPIC_REVISED: {
+            return res.status(status).json({ message });
+        }
+
         default: return res.status(status).json({ message: message + (successMessage ? ' ' + successMessage : '') });
     }
 }
